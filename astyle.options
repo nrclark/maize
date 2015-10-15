@@ -1,0 +1,15 @@
+--max-code-length=80
+
+--suffix=none            # Removes file backups
+--lineend=linux          # Uses \n to end each line
+--style=1tbs             # One-true-brace style
+--indent=spaces=4        # Uses 4 spaces for indents
+
+--align-pointer=name     # Aligns pointers as int *x
+--align-reference=name   # Aligns references as int &x
+--break-blocks           # Adds whitespace around block statements (if, for, etc).
+--break-closing-brackets # Adds a newline after all closing brackets
+--add-brackets           # Adds brackets around every one-liner conditional.
+--pad-header             # Places one space before each paren header [if() becomes if ()]
+--indent-col1-comments   # Allows for comment indentation along with code
+--convert-tabs           # Converts tabs into whitespace
