@@ -47,9 +47,7 @@ static inline const char *next_block(const char *restrict data,
     return data + len;
 }
 
-void tx_packet(const char *const data,
-               const uint16_t length,
-               const transmitter myTx)
+void tx_packet(char *data, uint16_t length, transmitter myTx)
 {
     const char *restrict position;
     const char *end;
@@ -71,6 +69,10 @@ void tx_packet(const char *const data,
             window = (remaining > 254) ? 254 : (uint8_t) remaining;
             position = next_block(position, window, myTx);
             remaining = end - position;
+        }
+
+        if (*end == '\x00') {
+            myTx('\x01');
         }
     }
 
