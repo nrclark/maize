@@ -11,7 +11,5 @@
 #include <stdint.h>
 
 typedef void (*transmitter) (char);
-int dummy(int op_a, int op_b);
-void tx_packet(char *data, uint16_t length, transmitter myTx);
-
+void tx_packet(const char *data, const uint16_t length, const transmitter myTx);
 #endif /* MAIZE_H_ */

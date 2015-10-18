@@ -16,11 +16,6 @@
 
 #include "maize.h"
 
-int dummy(int op_a, int op_b)
-{
-    return op_a + op_b;
-}
-
 static inline const char *next_block(const char *restrict data,
                                      const uint8_t maxlen,
                                      const transmitter myTx)
@@ -47,7 +42,7 @@ static inline const char *next_block(const char *restrict data,
     return data + len;
 }
 
-void tx_packet(char *data, uint16_t length, transmitter myTx)
+void tx_packet(const char *data, const uint16_t length, const transmitter myTx)
 {
     const char *restrict position;
     const char *end;

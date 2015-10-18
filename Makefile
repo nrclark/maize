@@ -7,7 +7,7 @@ BUILD_SRCS := $(wildcard src/maize.*) $(wildcard src/queue.*)
 OBJS := $(patsubst src/%.c,build/%.o,$(filter %.c,$(BUILD_SRCS)))
 DEPS := $(patsubst build/%.o,build/%.d,$(OBJS))
 
-CFLAGS ?= -O0 -g3 -pedantic -Wall -Wextra -Wconversion
+CFLAGS ?= -O3 -g3 -pedantic -Wall -Wextra -Wconversion
 CFLAGS := $(CFLAGS) --std=c99 -c -fpic
 
 .DEFAULT_GOAL := $(OUTPUT_LIB)
