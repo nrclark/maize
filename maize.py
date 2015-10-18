@@ -9,6 +9,8 @@ import subprocess
 
 
 class PyQueue(object):
+    """ This class is used to provide an interface for Maize's
+    transmitter/receiver libraries. """
 
     def __init__(self):
         self.reset()
@@ -26,6 +28,8 @@ class PyQueue(object):
 
 
 class RemoteImplementation(object):
+    """ This class provides encode()/decode() methods that use the
+    library-under-test. """
 
     def __init__(self):
         self.queue = PyQueue()
@@ -43,7 +47,9 @@ class RemoteImplementation(object):
 
 
 class ReferenceImplementation(object):
-
+    """ This class provides encode()/decode() methods that use the
+    PyPI's 'cobs' library. """
+     
     def __init__(self):
         pass
 
@@ -61,6 +67,8 @@ class ReferenceImplementation(object):
 
 
 class NoZerosTestCase(unittest.TestCase):
+    """ This test-case verifies the behavior of the Maize library when
+    given packets that have no null-characters. """
 
     def setUp(self):
         self.myRemote = RemoteImplementation()
@@ -93,7 +101,9 @@ class NoZerosTestCase(unittest.TestCase):
 
 
 class AllZerosTestCase(unittest.TestCase):
-
+    """ This test-case verifies the behavior of the Maize library when
+    given packets that completely made of null-characters. """
+    
     def setUp(self):
         self.myRemote = RemoteImplementation()
         self.myReference = ReferenceImplementation()
@@ -125,7 +135,17 @@ class AllZerosTestCase(unittest.TestCase):
 
 
 class SomeZerosTestCase(unittest.TestCase):
-
+    """ This test-case verifies the encoding of a set of a randomly-
+    generated set of packets.
+    
+    There are no guarantees for which (if any) bytes in the source packet
+    will be null-characters, but the test keeps the random range to within
+    1/16 of the packet size (or a minimum of 4). That means that a packet
+    of 512B will probably have numerous zeros with a very high probability.
+    
+    Various packet sizes are tested. Each test is repeated 512 times with
+    new random values each time. """
+   
     def setUp(self):
         self.myRemote = RemoteImplementation()
         self.myReference = ReferenceImplementation()
@@ -159,7 +179,17 @@ class SomeZerosTestCase(unittest.TestCase):
 
 
 class NicksTestCase(unittest.TestCase):
-
+    """ This test-case verifies the encoding of a set of specially-made
+    test vectors. 
+    
+    The test vectors insert null-characters at various places near the
+    256B and 512B boundaries (each location gets a full sweep of 5 bits
+    starting at N-3). Other null characters in-between blocks are also
+    cycled.
+    
+    This test case should be sufficient to cover all of the 'dark 
+    corners' of the COBS encoding method. """   
+     
     def setUp(self):
         self.myRemote = RemoteImplementation()
         self.myReference = ReferenceImplementation()
