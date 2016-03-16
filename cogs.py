@@ -118,12 +118,56 @@ def cobs_send(packet, length, transmitter):
         pointer = pointer - (loc == block_size)
 
 
-class TestCobs(unittest.TestCase):
+class CobsReceiver(object):
+
+    def __init__(self, buffer=1024):
+        self.buffer = cstring.MockStringPointer(buffer)
+        self.state = 'idle'
+        self.length = 0
+        self.remaining = 0
+        self.is_zero = False
+
+    def cobs_rx(self, char):
+        if self.state is 'idle':
+            if char is '\x00':
+                self.length = 0
+                self.state = 'active'
+                self.remaining = 1
+                self.is_zero = False
+
+        elif self.state is 'active':
+            if char is '\x00':
+                self.state = 'idle'
+                return str(self.buffer)[0:self.length]
+
+            elif self.remaining == 1:
+                if self.is_zero:
+                    self.buffer[self.length] = 0
+                    self.length += 1
+
+                self.remaining = ord(char)
+                self.is_zero = (self.remaining != 255)
+
+            else:
+                self.buffer[self.length] = ord(char)
+                self.length += 1
+
+        return None
+
+    def print_state(self):
+        print("----------------------")
+        print("State:     %s" % self.state)
+        print("Buffer:    %s" % repr(self.buffer))
+        print("Length:    %s" % self.length)
+        print("Remaining: %s" % self.remaining)
+        print("Is Zero:   %s" % self.is_zero)
+
+
+@unittest.skip("Working")
+class TestCobsTx(unittest.TestCase):
     """ Test suite for the COBS library. This suite compares the barebones
     cobs_send() library against the Python Package Index's 'cobs.cobs'
     module. """
-
-    # pylint: disable=missing-docstring
 
     def setUp(self):
         """ Configures the test-runner. """
@@ -187,6 +231,41 @@ class TestCobs(unittest.TestCase):
                         message[slot] = 1
 
                 self._run_test(str(message))
+
+
+class TestCobsRx(unittest.TestCase):
+    """ Test suite for the COBS library. This suite compares the barebones
+    cobs_send() library against the Python Package Index's 'cobs.cobs'
+    module. """
+
+    def setUp(self):
+        """ Configures the test-runner. """
+        self.fifo = Queue(mode='string')
+        self.receiver = CobsReceiver()
+
+    def _run_test(self, message):
+        """ Uses the local COBS encoder to encode a packet, and compares it
+        to the locally-encoded equivalent. """
+
+        self.fifo.push('\x00')
+        cobs_send(message, len(message), self.fifo.push)
+        self.fifo.push('\x00')
+        packet = self.fifo.dump()
+
+        for char in packet[:-1]:
+            result = self.receiver.cobs_rx(char)
+            self.assertIsNone(result)
+
+        char = packet[-1]
+        result = self.receiver.cobs_rx(char)
+        self.receiver.print_state()
+        self.assertIsNotNone(result)
+        self.assertEqual(result, message)
+
+    def test_hello(self):
+        """ Tests a short no-null packet. """
+        self._run_test("hello")
+
 
 if __name__ == "__main__":
     unittest.main()
