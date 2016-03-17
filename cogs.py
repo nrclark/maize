@@ -119,51 +119,53 @@ def cobs_send(packet, length, transmitter):
 
 
 class CobsReceiver(object):
+    """ Test module for doing COBS development. This module prototypes
+    the algorithm in a C-friendly way. """
 
-    def __init__(self, buffer=1024):
-        self.buffer = cstring.MockStringPointer(buffer)
-        self.state = 'idle'
+    def __init__(self, storage=1024):
+        self.storage = cstring.MockStringPointer(storage)
         self.length = 0
-        self.remaining = 0
-        self.is_zero = False
+        self.block_size = 0
+        self.progress = 0
 
     def cobs_rx(self, char):
-        if self.state is 'idle':
-            if char is '\x00':
-                self.length = 0
-                self.state = 'active'
-                self.remaining = 1
-                self.is_zero = False
+        """ Loads a new byte into the receiver. Returns a packet if there
+        is one to be had. """
 
-        elif self.state is 'active':
-            if char is '\x00':
-                self.state = 'idle'
-                return str(self.buffer)[0:self.length]
+        if isinstance(char, str):
+            char = ord(char)
 
-            elif self.remaining == 1:
-                if self.is_zero:
-                    self.buffer[self.length] = 0
-                    self.length += 1
-
-                self.remaining = ord(char)
-                self.is_zero = (self.remaining != 255)
-
+        if char is 0:
+            self.block_size = 0
+            if self.length != 0:
+                retval = str(self.storage)[0:self.length]
             else:
-                self.buffer[self.length] = ord(char)
+                retval = None
+
+            self.length = 0
+            self.block_size = 0
+            return retval
+
+        if self.block_size == 0:
+            self.block_size = char
+            self.progress = 1
+
+        elif self.block_size == self.progress:
+            if self.block_size != 255:
+                self.storage[self.length] = 0
                 self.length += 1
+
+            self.progress = 1
+            self.block_size = char
+
+        else:
+            self.storage[self.length] = char
+            self.length += 1
+            self.progress += 1
 
         return None
 
-    def print_state(self):
-        print("----------------------")
-        print("State:     %s" % self.state)
-        print("Buffer:    %s" % repr(self.buffer))
-        print("Length:    %s" % self.length)
-        print("Remaining: %s" % self.remaining)
-        print("Is Zero:   %s" % self.is_zero)
 
-
-@unittest.skip("Working")
 class TestCobsTx(unittest.TestCase):
     """ Test suite for the COBS library. This suite compares the barebones
     cobs_send() library against the Python Package Index's 'cobs.cobs'
@@ -247,7 +249,6 @@ class TestCobsRx(unittest.TestCase):
         """ Uses the local COBS encoder to encode a packet, and compares it
         to the locally-encoded equivalent. """
 
-        self.fifo.push('\x00')
         cobs_send(message, len(message), self.fifo.push)
         self.fifo.push('\x00')
         packet = self.fifo.dump()
@@ -258,13 +259,60 @@ class TestCobsRx(unittest.TestCase):
 
         char = packet[-1]
         result = self.receiver.cobs_rx(char)
-        self.receiver.print_state()
         self.assertIsNotNone(result)
         self.assertEqual(result, message)
 
     def test_hello(self):
         """ Tests a short no-null packet. """
         self._run_test("hello")
+
+    def test_short_with_null(self):
+        """ Tests a short packet with a null in it. """
+        self._run_test("hel\x00lo")
+
+    @unittest.skip("Broken at present.")
+    def test_empty(self):
+        """ Tests an empty packet. """
+        self._run_test("")
+
+    def test_one_null(self):
+        """ Tests a packet consisting of a single zero. """
+        self._run_test("\x00")
+
+    def test_one_char(self):
+        """ Tests a packet consisting of a single non-null character. """
+        self._run_test("\x01")
+
+    def test_long(self):
+        """ Tests a long packet with no nulls in it. """
+        self._run_test(254 * 'a' + 'b' + 253 * 'c')
+
+    def test_long_middle_null(self):
+        """ Tests a long packet with a zero in various locations. """
+        for block in [0, 1, 2, 252, 253, 254, 255]:
+            self._run_test(block * 'a' + '\x00' + 253 * 'c')
+
+    def test_all_null(self):
+        """ Tests an all-null packet of various lengths. """
+        for block in range(250, 259):
+            self._run_test(block * '\x00')
+
+    def test_random_data(self):
+        """ This test sweeps the COBS transmitter through a variety of
+        different message lengths. Messages are randomly generated, but
+        will generally have approximately 25% zeros in them. Each message
+        length is swept through several passes. """
+
+        lengths = [64, 254, 255, 256, 257, 509, 510, 511, 512, 513, 514]
+
+        for _ in range(16):
+            for length in lengths:
+                message = bytearray(length)
+                for slot in range(length):
+                    if random.random() >= 0.25:
+                        message[slot] = 1
+
+                self._run_test(str(message))
 
 
 if __name__ == "__main__":
